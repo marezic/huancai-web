@@ -7,8 +7,8 @@ import type { Skill } from "@/data"
 
 // ============ 在这里填入你的 Supabase 项目凭证 ============
 // 获取方式：supabase.com 免费注册 → New Project → Project Settings → API
-export const SUPABASE_URL = ""
-export const SUPABASE_ANON_KEY = ""
+export const SUPABASE_URL = "https://dfeiitlfmyhzemlraisc.supabase.co"
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZWlpdGxmbXloemVtbHJhaXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3OTEyMTEsImV4cCI6MjEwNzM2NzIxMX0.j7rtS9jIY4ouNAd_w8B879LiwLTONLDy1ZAGksl2iXM"
 // ===========================================================
 
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
