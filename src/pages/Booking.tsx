@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { SKILLS } from "@/data"
 import { useStore } from "@/store"
 import { cn } from "@/lib/utils"
 
@@ -25,8 +24,8 @@ const TIMES = ["10:00", "14:00", "15:00", "16:00", "19:00", "20:00"]
 export default function Booking() {
   const { id } = useParams()
   const nav = useNavigate()
-  const skill = SKILLS.find((s) => s.id === id)
-  const { points, createOrder } = useStore()
+  const { allSkills, points, createOrder } = useStore()
+  const skill = allSkills.find((s) => s.id === id)
 
   const [date, setDate] = useState(DATES[1])
   const [time, setTime] = useState("15:00")

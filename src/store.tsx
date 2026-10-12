@@ -4,11 +4,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 import { toast } from "sonner"
 import { SEED_TXNS, SKILLS, type Skill, type Txn } from "@/data"
+import {
+  ensureSession,
+  fetchRemoteSkills,
+  insertSkill,
+  isSupabaseConfigured,
+  type SessionInfo,
+} from "@/lib/supabase"
 
 const STORE_KEY = "huancai-store-v1"
 
@@ -35,6 +43,9 @@ interface StoreState {
   signedDates: string[]
   readConvs: string[]
   verified: boolean
+  remoteSkills: Skill[]
+  dbReady: boolean
+  userLabel: string | null
 }
 
 const seedState: StoreState = {
@@ -60,6 +71,9 @@ const seedState: StoreState = {
   signedDates: [],
   readConvs: [],
   verified: true,
+  remoteSkills: [],
+  dbReady: false,
+  userLabel: null,
 }
 
 function loadState(): StoreState {
@@ -73,6 +87,7 @@ function loadState(): StoreState {
 }
 
 interface StoreApi extends StoreState {
+  allSkills: Skill[]
   addTxn: (title: string, amount: number) => void
   publishSkill: (skill: Skill) => void
   toggleFav: (id: string) => void
@@ -86,6 +101,7 @@ const StoreCtx = createContext<StoreApi | null>(null)
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<StoreState>(loadState)
+  const sessionRef = useRef<SessionInfo | null>(null)
 
   useEffect(() => {
     try {
@@ -94,6 +110,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }, [state])
+
+  // 云端模式：自动匿名登录 + 拉取全站技能；未配置或失败时静默保持演示模式
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    let cancelled = false
+    ;(async () => {
+      const session = await ensureSession()
+      if (cancelled) return
+      if (!session) {
+        console.warn("[换才] 云端登录失败，本次以演示模式运行")
+        return
+      }
+      sessionRef.current = session
+      setState((s) => ({ ...s, dbReady: true, userLabel: session.nickname }))
+      const remote = await fetchRemoteSkills()
+      if (!cancelled && remote.length) {
+        setState((s) => ({ ...s, remoteSkills: remote }))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const addTxn = useCallback((title: string, amount: number) => {
     setState((s) => ({
@@ -108,6 +147,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const publishSkill = useCallback((skill: Skill) => {
     setState((s) => ({ ...s, mySkills: [skill, ...s.mySkills] }))
+    // 云端模式：后台同步到 Supabase，成功后以云端数据为准重新置顶
+    const session = sessionRef.current
+    if (session && isSupabaseConfigured) {
+      insertSkill(session.userId, {
+        title: skill.title,
+        subtitle: skill.subtitle,
+        category: skill.category,
+        description: skill.intro ?? "",
+        mode: skill.mode,
+        price: skill.price,
+        exchange: skill.exchange,
+        color: skill.color,
+        nickname: session.nickname,
+      })
+        .then((remote) => {
+          if (remote) {
+            setState((s) => ({
+              ...s,
+              remoteSkills: [remote, ...s.remoteSkills.filter((r) => r.id !== remote.id)],
+            }))
+          }
+        })
+        .catch(() => {
+          toast.error("云端同步失败", { description: "技能已保存在本设备，稍后可重试" })
+        })
+    }
   }, [])
 
   const toggleFav = useCallback((id: string) => {
@@ -204,9 +269,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const allSkills = useMemo<Skill[]>(
+    () => [...state.remoteSkills, ...SKILLS],
+    [state.remoteSkills],
+  )
+
   const api = useMemo<StoreApi>(
     () => ({
       ...state,
+      allSkills,
       addTxn,
       publishSkill,
       toggleFav,
@@ -215,7 +286,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signIn,
       markConvRead,
     }),
-    [state, addTxn, publishSkill, toggleFav, createOrder, joinActivity, signIn, markConvRead],
+    [state, allSkills, addTxn, publishSkill, toggleFav, createOrder, joinActivity, signIn, markConvRead],
   )
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>

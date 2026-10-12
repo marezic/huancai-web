@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronRight,
   PencilLine,
+  Cloud,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, PageHeader } from "@/components/common"
@@ -33,7 +34,7 @@ const MENU = [
 ]
 
 export default function Me() {
-  const { points, orders, mySkills } = useStore()
+  const { points, orders, mySkills, userLabel, dbReady } = useStore()
   const tab = ORDER_TABS[0].key
 
   return (
@@ -45,20 +46,28 @@ export default function Me() {
         <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
           <div className="relative">
-            <Avatar name="小明同学" color="#ffffff" size={64} className="text-hc-700" />
+            <Avatar name={userLabel ?? "小明同学"} color="#ffffff" size={64} className="text-hc-700" />
             <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-hc-600 bg-hcyellow-400">
               <Crown className="h-3 w-3 text-hcyellow-800" />
             </span>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold">小明同学</h2>
+              <h2 className="text-xl font-bold">{userLabel ?? "小明同学"}</h2>
               <span className="rounded-full bg-hcyellow-400 px-2 py-0.5 text-[11px] font-bold text-hcyellow-900">
                 钻石用户
               </span>
+              {dbReady && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium ring-1 ring-white/25">
+                  <Cloud className="h-3 w-3" />
+                  云端已连接
+                </span>
+              )}
             </div>
             <p className="mt-1 text-xs text-white/75">
-              ID: 123456 · 武汉大学 · 已完成校园实名认证 ✓
+              {dbReady
+                ? `云端账号 · ${userLabel ?? ""} · 发布内容全站实时同步 ✓`
+                : "ID: 123456 · 武汉大学 · 已完成校园实名认证 ✓"}
             </p>
           </div>
           <button

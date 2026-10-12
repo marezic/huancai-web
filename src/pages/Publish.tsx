@@ -13,7 +13,7 @@ const PALETTE = ["#43CD68", "#3D8AF7", "#FF7A7A", "#9B7BF7", "#F7931E", "#2BB3A3
 
 export default function Publish() {
   const nav = useNavigate()
-  const { publishSkill } = useStore()
+  const { publishSkill, dbReady, userLabel } = useStore()
   const [mode, setMode] = useState<"我能教" | "我想学">("我能教")
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("设计")
@@ -44,7 +44,7 @@ export default function Publish() {
       category,
       teacher: {
         id: "me",
-        name: "小明同学",
+        name: userLabel ?? "小明同学",
         school: "武汉大学",
         cert: "校园认证",
         rating: 5.0,
@@ -60,7 +60,9 @@ export default function Publish() {
       slots: ["今天 19:00", "明天 15:00"],
     })
     toast.success(mode === "我能教" ? "技能发布成功！" : "想学需求发布成功！", {
-      description: "已上架到找技能列表，可在「我的」中管理",
+      description: dbReady
+        ? "已同步云端，所有访客都能在找技能列表看到"
+        : "已上架到找技能列表，可在「我的」中管理",
     })
     nav("/skills")
   }

@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, CertBadge, PointsTag, SectionTitle } from "@/components/common"
-import { HOT_TAGS, SKILLS, FEATURES, type Skill } from "@/data"
+import { HOT_TAGS, FEATURES, type Skill } from "@/data"
 import { useStore } from "@/store"
 
 const FEATURE_ICONS: Record<string, typeof ShieldCheck> = {
@@ -74,8 +74,8 @@ function SkillCard({ skill }: { skill: Skill }) {
 }
 
 export default function Home() {
-  const { mySkills } = useStore()
-  const featured = SKILLS.filter((s) => s.hot)
+  const { mySkills, allSkills } = useStore()
+  const featured = allSkills.filter((s) => s.hot)
 
   return (
     <div className="space-y-12">

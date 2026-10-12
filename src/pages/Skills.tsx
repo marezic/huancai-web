@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { Search, MapPin, ArrowRightLeft, SlidersHorizontal } from "lucide-react"
 import { Avatar, CertBadge, PageHeader } from "@/components/common"
-import { SKILLS } from "@/data"
+import { useStore } from "@/store"
 import { cn } from "@/lib/utils"
 
 const TABS = ["推荐", "附近", "最新"] as const
@@ -13,9 +13,10 @@ export default function Skills() {
   const q = params.get("q") ?? ""
   const [tab, setTab] = useState<(typeof TABS)[number]>("推荐")
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("全部")
+  const { allSkills } = useStore()
 
   const list = useMemo(() => {
-    let result = SKILLS
+    let result = allSkills
     if (q.trim()) {
       const key = q.trim().toLowerCase()
       result = result.filter(
@@ -35,7 +36,7 @@ export default function Skills() {
       )
     if (tab === "最新") result = [...result].reverse()
     return result
-  }, [q, tab, filter])
+  }, [q, tab, filter, allSkills])
 
   return (
     <div>

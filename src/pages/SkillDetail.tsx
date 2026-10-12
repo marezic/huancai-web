@@ -11,14 +11,13 @@ import {
 import { useState } from "react"
 import { toast } from "sonner"
 import { Avatar, CertBadge, Stars } from "@/components/common"
-import { SKILLS } from "@/data"
 import { useStore } from "@/store"
 import { cn } from "@/lib/utils"
 
 export default function SkillDetail() {
   const { id } = useParams()
-  const skill = SKILLS.find((s) => s.id === id)
-  const { favorites, toggleFav } = useStore()
+  const { allSkills, favorites, toggleFav } = useStore()
+  const skill = allSkills.find((s) => s.id === id)
   const [slot, setSlot] = useState<string | null>(null)
 
   if (!skill) {

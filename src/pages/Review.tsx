@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router"
 import { CheckCircle2, Star, Gift } from "lucide-react"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
-import { SKILLS } from "@/data"
 import { useStore } from "@/store"
 import { cn } from "@/lib/utils"
 
@@ -12,8 +11,8 @@ const TAGS = ["讲解清晰", "准备充分", "收获很大", "及时回复", "�
 export default function Review() {
   const { id } = useParams()
   const nav = useNavigate()
-  const skill = SKILLS.find((s) => s.id === id) ?? SKILLS[0]
-  const { addTxn } = useStore()
+  const { allSkills, addTxn } = useStore()
+  const skill = allSkills.find((s) => s.id === id) ?? allSkills[0]
 
   const [stars, setStars] = useState(5)
   const [hover, setHover] = useState(0)

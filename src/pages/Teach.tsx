@@ -16,7 +16,7 @@ import {
   Image as ImageIcon,
   Undo2,
 } from "lucide-react"
-import { SKILLS } from "@/data"
+import { useStore } from "@/store"
 import { cn } from "@/lib/utils"
 
 function fmt(sec: number) {
@@ -27,7 +27,8 @@ function fmt(sec: number) {
 
 export default function Teach() {
   const { id } = useParams()
-  const skill = SKILLS.find((s) => s.id === id) ?? SKILLS[0]
+  const { allSkills } = useStore()
+  const skill = allSkills.find((s) => s.id === id) ?? allSkills[0]
   const [sec, setSec] = useState(23 * 60 + 45)
   const [mic, setMic] = useState(true)
   const [cam, setCam] = useState(true)

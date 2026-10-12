@@ -30,6 +30,7 @@ export default defineConfig({
             "@radix-ui/react-tabs",
           ],
           charts: ["recharts"],
+          supabase: ["@supabase/supabase-js"],
         },
       },
     },
