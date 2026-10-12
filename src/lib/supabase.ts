@@ -33,25 +33,79 @@ function randomNickname(): string {
   return `同学${tail}`
 }
 
-/** 确保有一个匿名身份（Supabase 需在后台开启 Anonymous sign-ins），并建档到 profiles 表 */
-export async function ensureSession(): Promise<SessionInfo | null> {
-  const sb = getSupabase()
-  if (!sb) return null
-  const { data: auth, error: authErr } = await sb.auth.signInAnonymously()
-  if (authErr || !auth.user) return null
-  const userId = auth.user.id
-
-  const { data: existing } = await sb
+async function loadProfileNickname(sb: SupabaseClient, userId: string): Promise<string> {
+  const { data } = await sb
     .from("profiles")
     .select("nickname")
     .eq("id", userId)
     .maybeSingle()
+  return data?.nickname ?? randomNickname()
+}
 
-  if (existing?.nickname) return { userId, nickname: existing.nickname }
+/** 读取本地已持久化的登录会话（supabase-js 自动存 localStorage） */
+export async function getExistingSession(): Promise<SessionInfo | null> {
+  const sb = getSupabase()
+  if (!sb) return null
+  const { data } = await sb.auth.getSession()
+  const user = data.session?.user
+  if (!user) return null
+  const nickname = await loadProfileNickname(sb, user.id)
+  return { userId: user.id, nickname }
+}
 
-  const nickname = randomNickname()
+export interface AuthResult {
+  ok: boolean
+  message: string
+  /** 邮箱确认开启时注册成功但未登录 */
+  needsConfirm?: boolean
+  session?: SessionInfo
+}
+
+/** 注册：邮箱 + 密码 + 用户名（若后台开启了邮箱确认，则注册后需先去邮箱点链接） */
+export async function signUp(
+  email: string,
+  password: string,
+  nickname: string,
+): Promise<AuthResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, message: "云端未配置" }
+  const { data, error } = await sb.auth.signUp({ email, password })
+  if (error) return { ok: false, message: error.message }
+  const user = data.user
+  if (!user) return { ok: false, message: "注册失败，请重试" }
+  const nick = nickname.trim() || randomNickname()
+  await sb.from("profiles").upsert({ id: user.id, nickname: nick })
+  if (!data.session) {
+    return { ok: true, needsConfirm: true, message: "注册成功！请先到邮箱点击确认链接，再回来登录" }
+  }
+  return { ok: true, message: "注册成功，已自动登录", session: { userId: user.id, nickname: nick } }
+}
+
+/** 登录：邮箱 + 密码 */
+export async function signIn(email: string, password: string): Promise<AuthResult> {
+  const sb = getSupabase()
+  if (!sb) return { ok: false, message: "云端未配置" }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password })
+  if (error) return { ok: false, message: "邮箱或密码不正确" }
+  const userId = data.user.id
+  const nickname = await loadProfileNickname(sb, userId)
   await sb.from("profiles").upsert({ id: userId, nickname })
-  return { userId, nickname }
+  return { ok: true, message: "登录成功", session: { userId, nickname } }
+}
+
+export async function signOut(): Promise<void> {
+  const sb = getSupabase()
+  if (sb) await sb.auth.signOut()
+}
+
+/** 修改用户名：同步更新档案和自己已发布的技能 */
+export async function updateNickname(userId: string, newName: string): Promise<boolean> {
+  const sb = getSupabase()
+  if (!sb) return false
+  const { error } = await sb.from("profiles").update({ nickname: newName }).eq("id", userId)
+  if (error) return false
+  await sb.from("skills").update({ nickname: newName }).eq("user_id", userId)
+  return true
 }
 
 export interface DbSkillRow {

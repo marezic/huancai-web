@@ -17,6 +17,7 @@ import Activities from "@/pages/Activities"
 import Me from "@/pages/Me"
 import Cert from "@/pages/Cert"
 import Verify from "@/pages/Verify"
+import Auth from "@/pages/Auth"
 
 function NotFound() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/activities" element={<Activities />} />
           <Route path="/me" element={<Me />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/cert" element={<Cert />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="*" element={<NotFound />} />

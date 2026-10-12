@@ -40,5 +40,7 @@ create policy "skills readable by everyone" on public.skills
   for select using (true);
 create policy "skills insert own" on public.skills
   for insert with check (auth.uid() = user_id);
+create policy "skills update own" on public.skills
+  for update using (auth.uid() = user_id);
 create policy "skills delete own" on public.skills
   for delete using (auth.uid() = user_id);

@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { Upload, GraduationCap, BookOpen, ArrowRightLeft, CircleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/common"
 import { CATEGORIES } from "@/data"
 import { useStore } from "@/store"
+import { isSupabaseConfigured } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const MODES = ["在线授课", "线下见面", "均可"] as const
@@ -14,6 +15,11 @@ const PALETTE = ["#43CD68", "#3D8AF7", "#FF7A7A", "#9B7BF7", "#F7931E", "#2BB3A3
 export default function Publish() {
   const nav = useNavigate()
   const { publishSkill, dbReady, userLabel } = useStore()
+
+  // 云端模式下，发布前需要先登录（游客仍可浏览全站技能）
+  useEffect(() => {
+    if (isSupabaseConfigured && !dbReady) nav("/auth")
+  }, [dbReady, nav])
   const [mode, setMode] = useState<"我能教" | "我想学">("我能教")
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("设计")

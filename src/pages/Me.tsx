@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router"
 import {
   Crown,
@@ -16,6 +17,13 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Avatar, PageHeader } from "@/components/common"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { useStore } from "@/store"
 
 const ORDER_TABS = [
@@ -34,8 +42,28 @@ const MENU = [
 ]
 
 export default function Me() {
-  const { points, orders, mySkills, userLabel, dbReady } = useStore()
+  const { points, orders, mySkills, userLabel, dbReady, rename, logout } = useStore()
   const tab = ORDER_TABS[0].key
+  const [editOpen, setEditOpen] = useState(false)
+  const [nameInput, setNameInput] = useState("")
+  const [savingName, setSavingName] = useState(false)
+
+  const saveName = async () => {
+    const name = nameInput.trim()
+    if (!name) {
+      toast.error("用户名不能为空")
+      return
+    }
+    setSavingName(true)
+    const ok = await rename(name)
+    setSavingName(false)
+    if (ok) {
+      toast.success("用户名已更新", { description: "你发布的技能也会同步显示新名字" })
+      setEditOpen(false)
+    } else {
+      toast.error("修改失败，请检查网络后重试")
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -46,37 +74,68 @@ export default function Me() {
         <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10" />
         <div className="relative flex items-center gap-4">
           <div className="relative">
-            <Avatar name={userLabel ?? "小明同学"} color="#ffffff" size={64} className="text-hc-700" />
-            <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-hc-600 bg-hcyellow-400">
-              <Crown className="h-3 w-3 text-hcyellow-800" />
-            </span>
+            <Avatar name={userLabel ?? "游客"} color="#ffffff" size={64} className="text-hc-700" />
+            {dbReady && (
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-hc-600 bg-hcyellow-400">
+                <Crown className="h-3 w-3 text-hcyellow-800" />
+              </span>
+            )}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold">{userLabel ?? "小明同学"}</h2>
-              <span className="rounded-full bg-hcyellow-400 px-2 py-0.5 text-[11px] font-bold text-hcyellow-900">
-                钻石用户
-              </span>
-              {dbReady && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium ring-1 ring-white/25">
-                  <Cloud className="h-3 w-3" />
-                  云端已连接
+              <h2 className="text-xl font-bold">{dbReady ? userLabel : "游客"}</h2>
+              {dbReady ? (
+                <>
+                  <span className="rounded-full bg-hcyellow-400 px-2 py-0.5 text-[11px] font-bold text-hcyellow-900">
+                    钻石用户
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium ring-1 ring-white/25">
+                    <Cloud className="h-3 w-3" />
+                    云端已连接
+                  </span>
+                </>
+              ) : (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium ring-1 ring-white/25">
+                  未登录
                 </span>
               )}
             </div>
             <p className="mt-1 text-xs text-white/75">
               {dbReady
-                ? `云端账号 · ${userLabel ?? ""} · 发布内容全站实时同步 ✓`
-                : "ID: 123456 · 武汉大学 · 已完成校园实名认证 ✓"}
+                ? `云端账号 · 发布内容全站实时同步 ✓`
+                : "登录后可发布技能，数据和全站同学实时同步"}
             </p>
           </div>
-          <button
-            onClick={() => toast.info("编辑资料", { description: "演示环境：资料页即将上线" })}
-            className="flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs ring-1 ring-white/25 transition-colors hover:bg-white/25"
-          >
-            <PencilLine className="h-3.5 w-3.5" />
-            编辑
-          </button>
+          {dbReady ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setNameInput(userLabel ?? "")
+                  setEditOpen(true)
+                }}
+                className="flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs ring-1 ring-white/25 transition-colors hover:bg-white/25"
+              >
+                <PencilLine className="h-3.5 w-3.5" />
+                改用户名
+              </button>
+              <button
+                onClick={async () => {
+                  await logout()
+                  toast.success("已退出登录")
+                }}
+                className="rounded-full bg-white/15 px-3 py-1.5 text-xs ring-1 ring-white/25 transition-colors hover:bg-white/25"
+              >
+                退出
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-hc-700 transition-transform hover:scale-105"
+            >
+              登录 / 注册
+            </Link>
+          )}
         </div>
 
         {/* 数据资产 */}
@@ -192,6 +251,31 @@ export default function Me() {
           </Link>
         ))}
       </section>
+
+      {/* 修改用户名弹窗 */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>修改用户名</DialogTitle>
+            <DialogDescription>新名字会同步显示在你发布的所有技能上</DialogDescription>
+          </DialogHeader>
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            maxLength={12}
+            placeholder="输入新用户名"
+            onKeyDown={(e) => e.key === "Enter" && saveName()}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition-all focus:border-hc-400 focus:bg-white focus:ring-2 focus:ring-hc-100"
+          />
+          <button
+            onClick={saveName}
+            disabled={savingName}
+            className="mt-2 w-full rounded-xl bg-hc-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-hc-600 disabled:opacity-60"
+          >
+            {savingName ? "保存中…" : "保存"}
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

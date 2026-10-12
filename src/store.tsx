@@ -11,10 +11,14 @@ import {
 import { toast } from "sonner"
 import { SEED_TXNS, SKILLS, type Skill, type Txn } from "@/data"
 import {
-  ensureSession,
   fetchRemoteSkills,
+  getExistingSession,
   insertSkill,
   isSupabaseConfigured,
+  signIn as sbSignIn,
+  signOut as sbSignOut,
+  signUp as sbSignUp,
+  updateNickname as sbUpdateNickname,
   type SessionInfo,
 } from "@/lib/supabase"
 
@@ -95,6 +99,14 @@ interface StoreApi extends StoreState {
   joinActivity: (id: string, cost: number, title: string) => boolean
   signIn: () => boolean
   markConvRead: (id: string) => void
+  login: (email: string, password: string) => Promise<{ ok: boolean; message: string }>
+  register: (
+    email: string,
+    password: string,
+    nickname: string,
+  ) => Promise<{ ok: boolean; message: string; needsConfirm?: boolean }>
+  logout: () => Promise<void>
+  rename: (newName: string) => Promise<boolean>
 }
 
 const StoreCtx = createContext<StoreApi | null>(null)
@@ -111,19 +123,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [state])
 
-  // 云端模式：自动匿名登录 + 拉取全站技能；未配置或失败时静默保持演示模式
+  // 云端模式：读取已有登录会话（未登录则以游客身份浏览，仍可看到全站技能）；
+  // 未配置云端或请求失败时静默保持演示模式
   useEffect(() => {
     if (!isSupabaseConfigured) return
     let cancelled = false
     ;(async () => {
-      const session = await ensureSession()
+      const session = await getExistingSession()
       if (cancelled) return
-      if (!session) {
-        console.warn("[换才] 云端登录失败，本次以演示模式运行")
-        return
+      if (session) {
+        sessionRef.current = session
+        setState((s) => ({ ...s, dbReady: true, userLabel: session.nickname }))
       }
-      sessionRef.current = session
-      setState((s) => ({ ...s, dbReady: true, userLabel: session.nickname }))
       const remote = await fetchRemoteSkills()
       if (!cancelled && remote.length) {
         setState((s) => ({ ...s, remoteSkills: remote }))
@@ -269,6 +280,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  // ---- 账号体系：注册 / 登录 / 登出 / 改名 ----
+  const applySession = useCallback((session: SessionInfo | null) => {
+    sessionRef.current = session
+    setState((s) => ({ ...s, dbReady: Boolean(session), userLabel: session?.nickname ?? null }))
+  }, [])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await sbSignIn(email, password)
+      if (res.ok && res.session) applySession(res.session)
+      return res
+    },
+    [applySession],
+  )
+
+  const register = useCallback(
+    async (email: string, password: string, nickname: string) => {
+      const res = await sbSignUp(email, password, nickname)
+      if (res.ok && res.session) applySession(res.session)
+      return res
+    },
+    [applySession],
+  )
+
+  const logout = useCallback(async () => {
+    await sbSignOut()
+    applySession(null)
+  }, [applySession])
+
+  const rename = useCallback(
+    async (newName: string) => {
+      const session = sessionRef.current
+      const name = newName.trim()
+      if (!session || !name) return false
+      const ok = await sbUpdateNickname(session.userId, name)
+      if (ok) {
+        sessionRef.current = { ...session, nickname: name }
+        setState((s) => ({ ...s, userLabel: name }))
+      }
+      return ok
+    },
+    [],
+  )
+
   const allSkills = useMemo<Skill[]>(
     () => [...state.remoteSkills, ...SKILLS],
     [state.remoteSkills],
@@ -285,8 +340,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       joinActivity,
       signIn,
       markConvRead,
+      login,
+      register,
+      logout,
+      rename,
     }),
-    [state, allSkills, addTxn, publishSkill, toggleFav, createOrder, joinActivity, signIn, markConvRead],
+    [state, allSkills, addTxn, publishSkill, toggleFav, createOrder, joinActivity, signIn, markConvRead, login, register, logout, rename],
   )
 
   return <StoreCtx.Provider value={api}>{children}</StoreCtx.Provider>
