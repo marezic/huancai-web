@@ -44,3 +44,7 @@ create policy "skills update own" on public.skills
   for update using (auth.uid() = user_id);
 create policy "skills delete own" on public.skills
   for delete using (auth.uid() = user_id);
+
+-- 4. 实时推送：把 skills 表加入实时发布，新帖/改帖/删帖自动推给所有在线访客
+-- （不执行这行的话网站仍可用，只是别人需要手动刷新才能看到更新）
+alter publication supabase_realtime add table public.skills;

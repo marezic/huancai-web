@@ -187,3 +187,28 @@ export async function insertSkill(
   if (error || !data) return null
   return dbRowToSkill(data as DbSkillRow)
 }
+
+/** 订阅技能表的实时变更（新帖/改帖/删帖），返回取消订阅函数 */
+export function subscribeSkills(
+  onChange: (event: "INSERT" | "UPDATE" | "DELETE", row: DbSkillRow) => void,
+): (() => void) | null {
+  const sb = getSupabase()
+  if (!sb) return null
+  const channel = sb
+    .channel("skills-changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "skills" },
+      (payload) => {
+        if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+          onChange(payload.eventType, payload.new as DbSkillRow)
+        } else if (payload.eventType === "DELETE") {
+          onChange("DELETE", payload.old as DbSkillRow)
+        }
+      },
+    )
+    .subscribe()
+  return () => {
+    void sb.removeChannel(channel)
+  }
+}

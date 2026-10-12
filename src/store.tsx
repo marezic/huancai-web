@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner"
 import { SEED_TXNS, SKILLS, type Skill, type Txn } from "@/data"
 import {
+  dbRowToSkill,
   fetchRemoteSkills,
   getExistingSession,
   insertSkill,
@@ -18,6 +19,7 @@ import {
   signIn as sbSignIn,
   signOut as sbSignOut,
   signUp as sbSignUp,
+  subscribeSkills,
   updateNickname as sbUpdateNickname,
   type SessionInfo,
 } from "@/lib/supabase"
@@ -140,8 +142,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, remoteSkills: remote }))
       }
     })()
+
+    // 实时订阅：别人发新帖 / 改帖 / 删帖时自动更新列表，无需手动刷新
+    const unsubscribe = subscribeSkills((event, row) => {
+      if (cancelled || !row?.id) return
+      setState((s) => {
+        if (event === "DELETE") {
+          return { ...s, remoteSkills: s.remoteSkills.filter((r) => r.id !== `db-${row.id}`) }
+        }
+        const skill = dbRowToSkill(row)
+        const rest = s.remoteSkills.filter((r) => r.id !== skill.id)
+        return { ...s, remoteSkills: [skill, ...rest] }
+      })
+    })
+
     return () => {
       cancelled = true
+      unsubscribe?.()
     }
   }, [])
 
